@@ -6,7 +6,7 @@
  * SPDX-License-Identifier: MIT
  *
  */
-#include <nlohmann/json-schema.hpp>
+#include "json-schema.hpp"
 
 #include <sstream>
 
@@ -35,7 +35,7 @@ void json_uri::update(const std::string &uri)
 			}
 
 			std::string hex = pointer.substr(pos + 1, 2);
-			char ascii = static_cast<char>(std::strtoul(hex.c_str(), nullptr, 16));
+			char ascii = (char) std::strtoul(hex.c_str(), nullptr, 16);
 			pointer.replace(pos, 3, 1, ascii);
 
 			pos--;
@@ -44,15 +44,16 @@ void json_uri::update(const std::string &uri)
 
 	auto location = uri.substr(0, pointer_separator);
 
-	if (location.size()) { // a location part has been found
+	if (location.size()) {          // a location part has been found
+		pointer_ = ""_json_pointer; // if a location is given, the pointer is emptied
 
 		// if it is an URN take it as it is
 		if (location.find("urn:") == 0) {
 			urn_ = location;
 
 			// and clear URL members
-			scheme_ = "";
-			authority_ = "";
+			proto_ = "";
+			hostname_ = "";
 			path_ = "";
 
 		} else { // it is an URL
@@ -64,13 +65,13 @@ void json_uri::update(const std::string &uri)
 
 				urn_ = ""; // clear URN-member if URL is parsed
 
-				scheme_ = location.substr(pos, proto - pos);
+				proto_ = location.substr(pos, proto - pos);
 				pos = 3 + proto; // 3 == "://"
 
-				auto authority = location.find("/", pos);
-				if (authority != std::string::npos) { // and the hostname (no proto without hostname)
-					authority_ = location.substr(pos, authority - pos);
-					pos = authority;
+				auto hostname = location.find("/", pos);
+				if (hostname != std::string::npos) { // and the hostname (no proto without hostname)
+					hostname_ = location.substr(pos, hostname - pos);
+					pos = hostname;
 				}
 			}
 
@@ -90,26 +91,20 @@ void json_uri::update(const std::string &uri)
 		}
 	}
 
-	pointer_ = ""_json_pointer;
-	identifier_ = "";
-
-	if (pointer[0] == '/')
-		pointer_ = json::json_pointer(pointer);
-	else
-		identifier_ = pointer;
+	pointer_ = nlohmann::json::json_pointer(pointer);
 }
 
-std::string json_uri::location() const
+const std::string json_uri::location() const
 {
 	if (urn_.size())
 		return urn_;
 
 	std::stringstream s;
 
-	if (scheme_.size() > 0)
-		s << scheme_ << "://";
+	if (proto_.size() > 0)
+		s << proto_ << "://";
 
-	s << authority_
+	s << hostname_
 	  << path_;
 
 	return s.str();
@@ -119,12 +114,7 @@ std::string json_uri::to_string() const
 {
 	std::stringstream s;
 
-	s << location() << " # ";
-
-	if (identifier_ == "")
-		s << pointer_.to_string();
-	else
-		s << identifier_;
+	s << location() << " # " << pointer_.to_string();
 
 	return s.str();
 }

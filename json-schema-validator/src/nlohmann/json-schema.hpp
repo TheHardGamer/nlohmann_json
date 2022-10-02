@@ -156,6 +156,8 @@ public:
         
         void set_root_schema(const std::string &, basic_error_handler &);
         
+        void set_root_schema(std::ifstream &schemastream, basic_error_handler &);
+        
 	// validate a json-document based on the root-schema
 	void validate(const json &);
 

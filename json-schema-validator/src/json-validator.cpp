@@ -1170,6 +1170,15 @@ namespace nlohmann {
                 err.error("", "", errorMsg);
             }
         }
+        
+        void json_validator::set_root_schema(std::ifstream &schemastream, basic_error_handler &err) {
+	try {
+		json schema = json::parse(schemastream);
+                root_->set_root_schema(schema);
+            } catch (const std::exception &e) {
+                throw std::runtime_error{e.what()};
+            }
+	}
 
     } // namespace json_schema
 } // namespace nlohmann
